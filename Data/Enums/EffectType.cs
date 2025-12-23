@@ -5,6 +5,7 @@
         Damage,         // Нанести урон
         BuffAttack,     // Увеличить атаку
         GenerateResource, // Дать ресурсы
-        DrawCard        // Добор карты
+        DrawCard,      // Добор карты
+        Summon
     }
 }

@@ -15,5 +15,8 @@ namespace Data.Models
         public EffectType Effect { get; set; }
         public int Value { get; set; } // Сила эффекта (например, 2 урона или +1 к атаке)
         public TargetType Target { get; set; } // Enemies, Allies, Self, FrontlineOnly
+
+        public ConditionType Condition { get; set; } // Условие
+        public string ConditionParam { get; set; }
     }
 }

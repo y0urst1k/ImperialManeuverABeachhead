@@ -11,11 +11,13 @@ namespace Core.Service
         public GameState State { get; private set; }
         public event EventHandler StateChanged;
 
+        private readonly AbilityProcessor _abilityProcessor;
         private readonly ICardDatabaseService _cardDb; // Сервис для получения CardModel по ID
 
-        public GameEngineService(ICardDatabaseService cardDb)
+        public GameEngineService(ICardDatabaseService cardDb, AbilityProcessor abilityProcessor)
         {
             _cardDb = cardDb;
+            _abilityProcessor = abilityProcessor;
         }
 
         public void StartGame(DeckModel playerDeck, DeckModel enemyDeck)
@@ -34,11 +36,19 @@ namespace Core.Service
 
         private PlayerState InitPlayer(DeckModel deck)
         {
+            var profile = new PlayerModel
+            {
+                Id = Guid.NewGuid(), // Явно задаем ID
+                Name = "Player",
+                Health = 30,
+                CurrentResources = 1
+            };
+
             var state = new PlayerState
             {
-                Profile = new PlayerModel { Name = "Player", Health = 30, CurrentResources = 1 },
-                CurrentHealth = 30,
-                CurrentResources = 1
+                Profile = profile,
+                CurrentHealth = profile.Health,
+                CurrentResources = profile.CurrentResources
             };
 
             // Превращаем ID карт из колоды в CardInstance
@@ -49,7 +59,8 @@ namespace Core.Service
                 {
                     BaseData = cardModel,
                     CurrentHealth = cardModel.Health,
-                    CurrentAttack = cardModel.Attack
+                    CurrentAttack = cardModel.Attack,
+                    OwnerId = profile.Id
                 };
                 state.Deck.Add(instance);
             }
@@ -112,8 +123,8 @@ namespace Core.Service
             {
                 if (ability.Trigger == trigger)
                 {
-                    // Тут логика применения эффекта (AbilityProcessor)
-                    // ApplyEffect(ability, source);
+                    // Передаем ТЕКУЩЕЕ состояние игры
+                    _abilityProcessor.Process(State, ability, source, _cardDb);
                 }
             }
         }

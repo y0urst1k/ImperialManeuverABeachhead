@@ -1,4 +1,6 @@
-﻿namespace MainComponents.ViewModels
+﻿using Core.States;
+
+namespace MainComponents.ViewModels
 {
     public class CardViewModel : BindableBase
     {
@@ -11,7 +13,7 @@
         public bool IsExhausted => _instance.IsExhausted;
 
         // Ссылка на ID, чтобы отправить команду в движок
-        public Guid InstanceId => _instance.Id;
+        public Guid InstanceId => _instance.InstanceId;
 
         public CardViewModel(CardInstance instance)
         {
