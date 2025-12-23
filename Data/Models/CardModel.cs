@@ -1,8 +1,10 @@
-﻿namespace Data
+﻿using Data.Enums;
+
+namespace Data.Models
 {
     public class CardModel
     {
-        public string Id { get; set; }
+        public Guid Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; } // Историческая справка
         public string ImagePath { get; set; }
@@ -16,5 +18,7 @@
 
         // Свойства для игры (изменяемые)
         public bool IsExhausted { get; set; } // Ходил ли в этом ходу
+
+        public List<AbilityModel> Abilities { get; set; } = new();
     }
 }

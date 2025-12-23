@@ -1,4 +1,4 @@
-﻿namespace Data
+﻿namespace Data.Enums
 {
     public enum CardType
     {
