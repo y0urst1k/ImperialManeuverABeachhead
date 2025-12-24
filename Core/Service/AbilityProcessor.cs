@@ -14,57 +14,79 @@ namespace Core.Service
             _targetResolver = new TargetResolver();
         }
 
-        public void Process(GameState state, AbilityModel ability, CardInstance source, ICardDatabaseService _cardDb)
+        public bool Process(GameState state, AbilityModel ability, CardInstance source, ICardDatabaseService _cardDb)
         {
             if (!CheckCondition(state, ability, source))
-                return;
+                return false;
 
-            // 2. Потом цели
-            List<CardInstance> targets;
+            // 2. Обработка целей (Targeted Effects)
+            if (ability.Selector != null)
+            {
+                var targets = _targetResolver.GetTargets(state, ability.Selector, source);
 
-            if (ability.TargetSelector != null)
-            {
-                targets = _targetResolver.GetTargets(state, ability.TargetSelector, source);
-            }
-            else
-            {
-                // Fallback для старого TargetType (если нужно)
-                targets = GetTargetsLegacy(...);
-            }
+                // Если цели нужны, но их нет — абилка может не сработать (зависит от правил игры)
+                if (targets.Count == 0 && ability.Selector.Count > 0) return false;
 
-            // 3. Эффект
-            foreach (var target in targets)
-            {
-                ApplyEffect(target, ability.Effect, ability.Value);
+                foreach (var target in targets)
+                {
+                    ApplyTargetedEffect(state, ability, target, source);
+                }
             }
 
-            // 4. Глобальные эффекты (которые не требуют цели, например Summon или AddResource)
+            // 3. Обработка глобальных эффектов (Non-Targeted)
             ApplyGlobalEffect(state, ability, source, _cardDb);
+
+            return true;
         }
 
-        private void ApplyDamage(GameState state, AbilityModel ability, CardInstance source)
+        private void ApplyTargetedEffect(GameState state, AbilityModel ability, CardInstance target, CardInstance source)
         {
-            // Логика выбора цели
-            var enemyState = (GetOwnerState(state, source) == state.Player) ? state.Enemy : state.Player;
-
-            var target = enemyState.Frontline.FirstOrDefault();
-            if (target != null)
+            switch (ability.Effect)
             {
-                target.CurrentHealth -= ability.Value;
-                CheckDeath(state, target);
+                case EffectType.Damage:
+                    // Просто меняем цифры. Смерть проверит GameEngine.
+                    target.CurrentHealth -= ability.Value;
+                    break;
+
+                case EffectType.BuffAttack:
+                    target.BuffAttack += ability.Value; // Лучше в модификатор, чем в CurrentAttack
+                    break;
+
+                    // Heal, Silence и т.д.
             }
         }
 
-        private void CheckDeath(GameState state, CardInstance unit)
+        private void ApplyGlobalEffect(GameState state, AbilityModel ability, CardInstance source, ICardDatabaseService cardDb)
         {
-            // Удаляем из списков (ищем и у игрока, и у врага)
-            if (state.Player.Frontline.Remove(unit) || state.Player.Backline.Remove(unit))
+            var owner = GetOwnerState(state, source);
+
+            switch (ability.Effect)
             {
-                state.Player.Graveyard.Add(unit);
-            }
-            else if (state.Enemy.Frontline.Remove(unit) || state.Enemy.Backline.Remove(unit))
-            {
-                state.Enemy.Graveyard.Add(unit);
+                case EffectType.GenerateResource:
+                    owner.CurrentResources += ability.Value;
+                    break;
+
+                case EffectType.Summon:
+                    if (Guid.TryParse(ability.ConditionParam, out Guid cardId))
+                    {
+                        var tokenModel = cardDb.GetCardById(cardId);
+                        if (tokenModel != null)
+                        {
+                            var token = new CardInstance
+                            {
+                                BaseData = tokenModel,
+                                CurrentHealth = tokenModel.Health,
+                                CurrentAttack = tokenModel.Attack,
+                                OwnerId = owner.PlayerId
+                            };
+                            owner.Frontline.Add(token);
+                        }
+                    }
+                    break;
+
+                case EffectType.DrawCard:
+                    // Логика добора (лучше вызывать метод движка DrawCards, но можно и тут)
+                    break;
             }
         }
 
@@ -95,23 +117,6 @@ namespace Core.Service
 
             // Если не совпал, значит карта принадлежит врагу
             return state.Enemy;
-        }
-
-        private void ApplyEffect(GameState state, AbilityModel ability, CardInstance target, CardInstance source, ICardDatabaseService _cardDb)
-        {
-            switch (ability.Effect)
-            {
-                case EffectType.Damage:
-                    target.CurrentHealth -= ability.Value;
-                    CheckDeath(state, target);
-                    break;
-
-                case EffectType.BuffAttack:
-                    target.CurrentAttack += ability.Value;
-                    break;
-
-                    // ... и так далее
-            }
         }
     }
 }

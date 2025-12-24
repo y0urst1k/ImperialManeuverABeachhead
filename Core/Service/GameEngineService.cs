@@ -149,6 +149,55 @@ namespace Core.Service
         private void Notify() => StateChanged?.Invoke(this, EventArgs.Empty);
 
         // Заглушка для атаки
-        public void Attack(Guid attackerId, Guid targetId) { /* ... */ Notify(); }
+        public void Attack(Guid attackerId, Guid targetId) 
+        {
+            var attacker = FindCardOnBoard(attackerId);
+            var target = FindCardOnBoard(targetId);
+
+            if (attacker == null || target == null) return;
+            if (attacker.IsExhausted) return; // Не может атаковать
+            if (attacker.CurrentAttack <= 0) return;
+
+            // 1. Бой (Взаимный урон)
+            target.CurrentHealth -= attacker.TotalAttack;
+            attacker.CurrentHealth -= target.TotalAttack;
+
+            // 2. Усталость
+            attacker.IsExhausted = true;
+
+            // 3. Проверка смертей (Вот тут она нужна!)
+            ResolveDeaths();
+            Notify(); 
+        }
+
+        private CardInstance FindCardOnBoard(Guid instanceId)
+        {
+            // 1. Ищем у Игрока (Player)
+            var card = FindInPlayerZones(State.Player, instanceId);
+            if (card != null) return card;
+
+            // 2. Ищем у Врага (Enemy)
+            return FindInPlayerZones(State.Enemy, instanceId);
+        }
+
+        private CardInstance FindInPlayerZones(PlayerState player, Guid instanceId)
+        {
+            // Проверяем Фронт
+            var inFront = player.Frontline.FirstOrDefault(c => c.InstanceId == instanceId);
+            if (inFront != null) return inFront;
+
+            // Проверяем Тыл
+            var inBack = player.Backline.FirstOrDefault(c => c.InstanceId == instanceId);
+            return inBack;
+        }
+
+        // Метод "Уборщик"
+        private void ResolveDeaths()
+        {
+            // Проходим по Frontline и Backline обоих игроков
+            // Удаляем тех, у кого Health <= 0
+            // Добавляем их в Graveyard
+            // Вызываем Deathrattle (если будут)
+        }
     }
 }
