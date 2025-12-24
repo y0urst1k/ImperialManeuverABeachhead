@@ -1,11 +1,9 @@
-﻿using Data.Models;
-
-namespace Core.States
+﻿namespace Core.States
 {
     // Состояние конкретного игрока в матче
     public class PlayerState
     {
-        public PlayerModel Profile { get; set; } // Ссылка на профиль (Имя, Аватар)
+        public Guid PlayerId { get; set; } // Ссылка на профиль (Имя, Аватар)
 
         // Динамические параметры матча
         public int CurrentHealth { get; set; }

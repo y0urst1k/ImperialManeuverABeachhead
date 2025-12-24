@@ -9,7 +9,7 @@ namespace Data.Models
         public string Description { get; set; }
 
         public AbilityTrigger Trigger { get; set; }
-        public int ResourceCost { get; set; } // Только для Active
+        public int? ResourceCost { get; set; } // Только для Active
 
         // Параметры для движка
         public EffectType Effect { get; set; }
@@ -18,5 +18,7 @@ namespace Data.Models
 
         public ConditionType Condition { get; set; } // Условие
         public string ConditionParam { get; set; }
+
+        public TargetSelector TargetSelector { get; set; }
     }
 }

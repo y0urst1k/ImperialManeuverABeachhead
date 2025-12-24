@@ -9,8 +9,8 @@ namespace Core.Interface
         GameState State { get; }
         event EventHandler StateChanged;
 
-        void StartGame(DeckModel playerDeck, DeckModel enemyDeck);
-        void PlayCard(Guid cardInstanceId, TargetType targetZone); // Розыгрыш с руки
+        void StartGame(DeckModel enemyDeck);
+        void PlayCard(Guid cardInstanceId, ZoneType targetZone); // Розыгрыш с руки
         void EndTurn();
         void Attack(Guid attackerId, Guid targetId);
     }

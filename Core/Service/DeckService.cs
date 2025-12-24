@@ -1,23 +1,39 @@
-﻿using Data.Models;
+﻿using System.IO;
+using System.Text.Json;
+using Data.Models;
 using Services.Interface;
 
 namespace Services.Service
 {
     public class DeckService : IDeckService
     {
-        public IEnumerable<string> GetDeckNames()
-        {
-            throw new NotImplementedException();
-        }
+        private const string FolderPath = "Data/Decks";
 
-        public DeckModel LoadDeck(string deckName)
+        public DeckService()
         {
-            throw new NotImplementedException();
+            Directory.CreateDirectory(FolderPath);
         }
 
         public void SaveDeck(DeckModel deck)
         {
-            throw new NotImplementedException();
+            var json = JsonSerializer.Serialize(deck);
+            var path = Path.Combine(FolderPath, $"{deck.Name}.json");
+            File.WriteAllText(path, json);
+        }
+
+        public DeckModel LoadDeck(string deckName)
+        {
+            var path = Path.Combine(FolderPath, $"{deckName}.json");
+            if (!File.Exists(path)) return null;
+
+            var json = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<DeckModel>(json);
+        }
+
+        public IEnumerable<string> GetDeckNames()
+        {
+            return Directory.GetFiles(FolderPath, "*.json")
+                            .Select(Path.GetFileNameWithoutExtension);
         }
     }
 }

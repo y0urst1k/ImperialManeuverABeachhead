@@ -8,24 +8,31 @@ namespace Core.Service
 {
     public class GameEngineService : IGameEngineService
     {
-        public GameState State { get; private set; }
-        public event EventHandler StateChanged;
-
+        private readonly ISessionContextService _sessionContext;
         private readonly AbilityProcessor _abilityProcessor;
         private readonly ICardDatabaseService _cardDb; // Сервис для получения CardModel по ID
 
-        public GameEngineService(ICardDatabaseService cardDb, AbilityProcessor abilityProcessor)
+        public GameState State { get; private set; }
+        public event EventHandler StateChanged;
+
+        public GameEngineService(ICardDatabaseService cardDb, AbilityProcessor abilityProcessor, ISessionContextService sessionContext)
         {
             _cardDb = cardDb;
             _abilityProcessor = abilityProcessor;
+            _sessionContext = sessionContext;
         }
 
-        public void StartGame(DeckModel playerDeck, DeckModel enemyDeck)
+        public void StartGame(DeckModel enemyDeck)
         {
+            var playerDeck = _sessionContext.ActiveDeck;
+
+            if (playerDeck == null)
+                throw new Exception("Active deck not selected!");
+
             State = new GameState
             {
-                Player = InitPlayer(playerDeck),
-                Enemy = InitPlayer(enemyDeck)
+                Player = InitPlayer(playerDeck, isHuman: true),
+                Enemy = InitPlayer(enemyDeck, isHuman: false)
             };
 
             DrawCards(State.Player, 3); // Стартовая рука
@@ -34,21 +41,18 @@ namespace Core.Service
             Notify();
         }
 
-        private PlayerState InitPlayer(DeckModel deck)
+        private PlayerState InitPlayer(DeckModel deck, bool isHuman)
         {
-            var profile = new PlayerModel
-            {
-                Id = Guid.NewGuid(), // Явно задаем ID
-                Name = "Player",
-                Health = 30,
-                CurrentResources = 1
-            };
+            // Если это человек, берем профиль из контекста. Если бот - создаем фейковый.
+            var profile = isHuman
+                ? _sessionContext.CurrentPlayer
+                : new PlayerModel { Id = Guid.NewGuid(), Name = "Bot", Health = 30 };
 
             var state = new PlayerState
             {
-                Profile = profile,
-                CurrentHealth = profile.Health,
-                CurrentResources = profile.CurrentResources
+                PlayerId = profile.Id,
+                CurrentHealth = 30,
+                CurrentResources = 0 // Начинаем с 0
             };
 
             // Превращаем ID карт из колоды в CardInstance
@@ -69,7 +73,7 @@ namespace Core.Service
             return state;
         }
 
-        public void PlayCard(Guid cardInstanceId, TargetType targetZone)
+        public void PlayCard(Guid cardInstanceId, ZoneType targetZone)
         {
             var player = State.Player;
             var card = player.Hand.FirstOrDefault(c => c.InstanceId == cardInstanceId);
@@ -82,9 +86,9 @@ namespace Core.Service
             player.Hand.Remove(card);
 
             // 2. Кладем на стол
-            if (targetZone == TargetType.Frontline)
+            if (targetZone == ZoneType.Frontline)
                 player.Frontline.Add(card);
-            else if (targetZone == TargetType.Backline)
+            else if (targetZone == ZoneType.Backline)
                 player.Backline.Add(card);
 
             // 3. Срабатывание "OnPlay" способностей
